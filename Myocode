@@ -1,0 +1,206 @@
+#include <Servo.h>
+#include <MyoBridge.h>
+#include <SoftwareSerial.h>
+
+//SoftwareSerial connection to MyoBridge
+SoftwareSerial bridgeSerial(2,3);
+
+//initialize MyoBridge object with software serial connection
+MyoBridge bridge(bridgeSerial);
+
+//declare a function to handle pose data
+void handlePoseData(MyoPoseData& data) {
+
+  //convert pose data to MyoPose
+  MyoPose pose;
+  pose = (MyoPose)data.pose;
+
+  //print the pose
+  Serial.println(bridge.poseToString(pose));
+
+  move_hand(pose);
+
+   //delay(15);
+}
+
+//a function to inform us about the current state and the progess of the connection to the Myo.
+void printConnectionStatus(MyoConnectionStatus status) {
+  
+  //print the status constant as string
+  Serial.println(bridge.connectionStatusToString(status));
+}
+
+
+Servo servo_thumb;  // servo object thumb
+  #define PIN_SERVO (7) //Pin 7
+Servo servo_index;  // servo object index 
+  #define PIN_SERVO (6) //Pin 6
+Servo servo_middle; //servo object middle
+  #define PIN_SERVO (5) //Pin 5
+Servo servo_ring;  // servo object ring 
+  #define PIN_SERVO (8)  // pin 8
+Servo servo_pinky; // servo object pinky 
+  #define PIN_SERVO (A0, 9) //Pin 9
+
+void SetStrokePerc(float strokePercentage)
+{
+  if ( strokePercentage >= 1.0 && strokePercentage <= 99.0 )
+  {
+    int usec = 1000 + strokePercentage * ( 2000 - 1000 ) / 100.0 ;
+  }
+}
+void SetStrokeMM(int strokeReq,int strokeMax)
+{
+  SetStrokePerc( ((float)strokeReq) / strokeMax );
+}
+
+void setup() {
+
+  //initialize both serial connections
+  Serial.begin(115200);
+  bridgeSerial.begin(115200);
+
+  //wait until MyoBridge has found Myo and is connected. Make sure Myo is not connected to anything else and not in standby!
+  Serial.println("Searching for Myo...");
+  for (int i=0; i<10;i++){digitalWrite(13, HIGH);delay(50);
+  digitalWrite(13, LOW);delay(50);} 
+ //initiate the connection with the status callback function
+  bridge.begin(printConnectionStatus);
+  digitalWrite(13, HIGH);
+  delay(15);
+  digitalWrite(13, LOW);
+  Serial.println("connected!");
+  //declare a storage array for the hardware address
+  byte address[6];
+  //get the address and store it in our array
+  bridge.getHardwareAddress(address);
+  //print the hardware address in HEX format
+  Serial.print("Hardware Address: 0x");
+  for (int i=0;i<6;i++) {
+    Serial.print(address[i], HEX);
+  }
+  Serial.println();
+  
+  //get the current battery level and print it
+  byte batteryLevel = bridge.getBatteryLevel();
+  Serial.print("Battery Level: ");
+  Serial.println(batteryLevel);
+  
+  //short vibration to show we are ready
+  bridge.vibrate(1);
+
+  //set the function that handles pose events
+  bridge.setPoseEventCallBack(handlePoseData);
+  //tell the Myo we want Pose data
+  bridge.enablePoseData();
+  //make sure Myo is unlocked
+  bridge.unlockMyo();
+
+  //You have to perform the sync gesture to receive Pose data!
+
+  servo_thumb.attach(7);  // attaches the servo on pin 7 to the servo object
+  servo_index.attach(6);  // attaches the servo on pin 6 to the servo object
+  servo_middle.attach(5); // attaches the servo on pin 5 to the servo object 
+  servo_ring.attach(8);  // attaches the servo on pin 8 to the servo object
+  servo_pinky. attach(9); // attaches the servo on pin 9 to the servo object 
+}
+void loop()
+{
+  //update the connection to MyoBridge
+  bridge.update();
+
+  //MyoPose pose;
+  //pose = (MyoPose)data.pose;
+  //char a = bridge.poseToString(pose);
+}
+void move_hand(int pose)
+{
+  int d = 10;
+  int delayMS = 15;
+  int i = 1000;
+  for ( i = 1000; i < 300; i += d )
+  {
+    SetStrokePerc(i);
+    delay(delayMS);
+  }
+  for ( i = 300; i > 1000;  i -= d )
+  {
+    SetStrokePerc(i);
+    delay(delayMS);
+  }
+#define POS_THUMB_OPEN 1000
+#define POS_THUMB_CLOSE 300
+#define POS_INDEX_OPEN 1000 // It is done
+#define POS_INDEX_CLOSE 300 // It is done
+#define POS_MIDDLE_OPEN 1000
+#define POS_MIDDLE_CLOSE 300
+#define POS_RING_OPEN 1000
+#define POS_RING_CLOSE 300
+#define POS_PINKY_OPEN 1000
+#define POS_PINKY_CLOSE 300
+
+int pos_thumb=300;
+int pos_index=300;
+int pos_middle=300;
+int pos_ring=300;
+int pos_pinky=300;
+int flag_openhand=300;
+
+  switch (pose) {
+        case 0://MYO_POSE_REST
+      pos_thumb = POS_THUMB_OPEN;
+      pos_index = POS_INDEX_OPEN;
+      pos_middle = POS_MIDDLE_OPEN;
+      pos_ring = POS_RING_OPEN;
+      pos_pinky = POS_PINKY_OPEN;
+      flag_openhand=1;
+      LED_blink();
+      break;
+    case 1://MYO_POSE_FIST
+      pos_thumb = POS_THUMB_CLOSE;
+      pos_index = POS_INDEX_CLOSE;
+      pos_middle = POS_MIDDLE_CLOSE;
+      pos_ring = POS_RING_CLOSE;
+      pos_pinky = POS_PINKY_CLOSE;
+      LED_blink();
+      break;
+    case 2://MYO_POSE_WAVE_IN
+      pos_thumb = POS_THUMB_OPEN;
+      pos_index = POS_INDEX_CLOSE;
+      pos_middle = POS_MIDDLE_CLOSE;
+      pos_ring = POS_RING_CLOSE;
+      pos_pinky = POS_PINKY_OPEN;
+      LED_blink();
+      break;
+    case 3://MYO_POSE_WAVE_OUT
+      pos_thumb = POS_THUMB_OPEN;
+      pos_index = POS_INDEX_OPEN;
+      pos_middle = POS_MIDDLE_OPEN;
+      pos_ring = POS_RING_OPEN;
+      pos_pinky = POS_PINKY_OPEN;
+      flag_openhand=1;
+      LED_blink();
+      break;
+    case 4: //MYO_POSE_FINGERSPREAD
+      pos_thumb = POS_THUMB_CLOSE;
+      pos_index = POS_INDEX_OPEN;
+      pos_middle = POS_MIDDLE_OPEN;
+      pos_pinky = POS_PINKY_CLOSE;
+      pos_ring = POS_RING_CLOSE;
+      LED_blink();
+      break;
+    case 5://MYO_POSE_DOUBLE_TAP
+      LED_blink();
+      break;
+   }
+ servo_thumb.write(pos_thumb);
+ servo_index.write(pos_index);
+ servo_middle.write(pos_middle);
+ servo_ring.write(pos_ring);
+ servo_pinky.write(pos_pinky);
+}
+void LED_blink ()
+{
+    digitalWrite(13, HIGH);delay(50);
+    digitalWrite(13, LOW);delay(50);
+}
